@@ -4,6 +4,11 @@ const THREE_CDN_CANDIDATES = [
   'https://cdn.skypack.dev/three@0.170.0'
 ];
 
+const ROOM_ENV_CDN_CANDIDATES = [
+  'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/environments/RoomEnvironment.js',
+  'https://unpkg.com/three@0.170.0/examples/jsm/environments/RoomEnvironment.js'
+];
+
 async function loadThree() {
   let lastErr = null;
   for (const url of THREE_CDN_CANDIDATES) {
@@ -17,6 +22,29 @@ async function loadThree() {
     }
   }
   throw lastErr ?? new Error('Failed to load Three.js');
+}
+
+async function loadRoomEnvironment() {
+  let lastErr = null;
+  for (const url of ROOM_ENV_CDN_CANDIDATES) {
+    try {
+      // @vite-ignore
+      return await import(url);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr ?? new Error('Failed to load RoomEnvironment');
+}
+
+async function createEnvironmentMap(THREE, renderer) {
+  const { RoomEnvironment } = await loadRoomEnvironment();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const room = new RoomEnvironment();
+  const envMap = pmrem.fromScene(room, 0.03).texture;
+  pmrem.dispose();
+  room.dispose?.();
+  return envMap;
 }
 
 function createPlasticMaterial(THREE, envMap) {
@@ -187,9 +215,12 @@ export async function initHeroCrown(canvas, container) {
   camera.position.set(0, 4.05, 1.08);
   camera.lookAt(0, 0, 0);
 
-  // Avoid extra addon dependency for maximum compatibility.
-  // If Three.js loads but environment helpers are blocked, we still render the crown.
-  const envMap = null;
+  let envMap = null;
+  try {
+    envMap = await createEnvironmentMap(THREE, renderer);
+  } catch (err) {
+    console.warn('RoomEnvironment unavailable; crown reflections disabled', err);
+  }
   const crown = buildCrownOfThorns(THREE, envMap, lowDetail);
   scene.add(crown);
 

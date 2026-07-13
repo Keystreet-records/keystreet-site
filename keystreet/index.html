@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Key Street — dark lyricism where minimalist indie meets cinematic ambience. Four singles from 2025.">
-  <link rel="icon" href="cover.png" type="image/png">
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="preload" href="fonts/inter-400.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="fonts/unifraktur-maguntia.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="modulepreload" href="hero-crown.js?v=35">
   <title>Key Street — Electronic Music</title>
   <style>
     /* ═══════════════════════════════════════
@@ -35,10 +39,11 @@
       --text-secondary: #B5B0AA;
       --text-muted: #706C67;
 
-      /* Typography — system-only (no external font fetch) */
-      --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, 'Helvetica Neue', sans-serif;
-      --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-      --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, 'Helvetica Neue', sans-serif;
+      /* Typography — self-hosted (no external font fetch) */
+      --font-display: 'SF Pro Display', 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+      --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+      --font-body: 'Inter', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+      --font-gothic: 'UnifrakturMaguntia', 'Times New Roman', Georgia, serif;
 
       /* Spacing scale */
       --space-xs: 0.25rem;
@@ -447,15 +452,29 @@
       display: block;
       pointer-events: none;
       background: transparent;
+      opacity: 0;
+      transition: opacity 0.45s var(--ease-out);
+    }
+    .hero-crown-stage.is-crown-ready #heroCrown3d {
+      opacity: 1;
     }
     .hero-crown-fallback {
-      position: relative;
+      position: absolute;
+      inset: 0;
       z-index: 2;
       width: 100%;
       height: 100%;
       object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.45s var(--ease-out);
     }
-    .hero-crown-fallback[hidden] { display: none !important; }
+    .hero-crown-stage.is-fallback-active .hero-crown-fallback {
+      opacity: 1;
+    }
+    .hero-crown-fallback[hidden],
+    .hero-crown-stage:not(.is-fallback-active) .hero-crown-fallback {
+      display: none !important;
+    }
 
     .hero-text {
       display: flex; flex-direction: column; gap: 1.5rem;
@@ -1325,7 +1344,7 @@
           <div class="hero-crown-glow hero-crown-glow--core" aria-hidden="true"></div>
           <div class="hero-crown-resonance-ring" aria-hidden="true"></div>
           <canvas id="heroCrown3d" aria-label="Crown of thorns"></canvas>
-          <img class="hero-crown-fallback" src="cover.png" alt="Key Street cover" hidden>
+          <img class="hero-crown-fallback" data-src="cover.png" alt="Key Street cover" hidden decoding="async">
         </div>
       </div>
 
@@ -1545,7 +1564,7 @@
           mouseY = e.clientY;
         });
 
-      // Latin letters rendered in a gothic-ish serif stack (system-only)
+      // Latin letters rendered in local UnifrakturMaguntia
       const glyphs = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
       class Particle {
@@ -1581,7 +1600,7 @@
           if (this.x > canvas.width + 20) this.x = -20;
         }
         draw() {
-          ctx.font = this.size + 'px "Times New Roman", Georgia, serif';
+          ctx.font = this.size + 'px "UnifrakturMaguntia", "Times New Roman", Georgia, serif';
           ctx.fillStyle = `rgba(221,24,24,${this.opacity})`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -2556,32 +2575,29 @@
       const container = document.getElementById('heroCover');
       const fallback = document.querySelector('.hero-crown-fallback');
 
-      if (!canvas || !container) {
+      function showFallback() {
+        if (!fallback || !container) return;
+        if (!fallback.src && fallback.dataset.src) {
+          fallback.src = fallback.dataset.src;
+        }
+        fallback.hidden = false;
+        container.classList.add('is-fallback-active');
+        container.classList.remove('is-crown-ready');
         if (canvas) canvas.hidden = true;
-        if (fallback) fallback.hidden = false;
+      }
+
+      if (!canvas || !container) {
+        showFallback();
         return;
       }
 
       try {
-        // Show the fallback immediately; replace it once 3D is ready.
-        if (fallback) fallback.hidden = false;
-
-        const start = async () => {
-          const { initHeroCrown } = await import('./hero-crown.js?v=33');
-          await initHeroCrown(canvas, container);
-          if (fallback) fallback.hidden = true;
-        };
-
-        // Avoid blocking first paint / audio interactions.
-        if ('requestIdleCallback' in window) {
-          requestIdleCallback(() => start(), { timeout: 2500 });
-        } else {
-          setTimeout(() => start(), 300);
-        }
+        const { initHeroCrown } = await import('./hero-crown.js?v=35');
+        await initHeroCrown(canvas, container);
+        container.classList.add('is-crown-ready');
       } catch (err) {
         console.warn('Hero crown 3D failed', err);
-        canvas.hidden = true;
-        if (fallback) fallback.hidden = false;
+        showFallback();
       }
     })();
   </script>

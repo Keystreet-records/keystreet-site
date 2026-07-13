@@ -3,33 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1C1C26" id="theme-color-meta">
-  <meta name="theme-color" content="#1C1C26" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#1C1C26" media="(prefers-color-scheme: light)">
-  <script>
-    (function () {
-      function setSat() {
-        var root = document.documentElement;
-        var probe = document.createElement('div');
-        probe.style.cssText = 'position:fixed;padding-top:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
-        root.appendChild(probe);
-        var top = parseFloat(getComputedStyle(probe).paddingTop) || 0;
-        probe.remove();
-        if (top < 1 && /iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '')) {
-          var min = Math.min(screen.width, screen.height);
-          var max = Math.max(screen.width, screen.height);
-          if (min >= 390 && max >= 852) top = 59;
-          else if (min >= 375 && max >= 812) top = 47;
-          else if (min >= 320) top = 20;
-        }
-        root.style.setProperty('--sat', Math.round(top) + 'px');
-      }
-      setSat();
-      window.__setSat = setSat;
-      addEventListener('resize', setSat);
-      addEventListener('orientationchange', function () { setTimeout(setSat, 120); });
-    })();
-  </script>
+  <meta name="theme-color" content="#1C1C26">
   <meta name="description" content="Key Street — dark lyricism where minimalist indie meets cinematic ambience. Four singles from 2025.">
   <link rel="icon" href="favicon.png" type="image/png">
   <link rel="stylesheet" href="fonts/fonts.css">
@@ -97,10 +71,9 @@
       --dur-normal: 300ms;
       --dur-slow: 500ms;
       --dur-glacial: 800ms;
-      --nav-bar-h: 3rem;
+      --nav-bar-h: 3.25rem;
       --nav-bar-h-lg: 4.25rem;
-      --sat: env(safe-area-inset-top, 0px);
-      --nav-height: calc(var(--nav-bar-h-lg) + var(--sat, 0px));
+      --nav-height: calc(var(--nav-bar-h-lg) + env(safe-area-inset-top, 0px));
     }
 
     /* ── RESET ─────────────────────────── */
@@ -121,13 +94,7 @@
 
     body {
       font-family: var(--font-body);
-      background-color: var(--page-base);
-      background-image: linear-gradient(
-        180deg,
-        var(--page-top) 0,
-        var(--page-top) var(--sat, 0px),
-        var(--page-base) var(--sat, 0px)
-      );
+      background: var(--page-base);
       color: var(--text-primary);
       line-height: 1.6;
       overflow-x: clip;
@@ -168,30 +135,17 @@
       mask-image: linear-gradient(to bottom, #000 0%, #000 42%, rgba(0,0,0,0.45) 68%, transparent 84%);
     }
 
-    /* ── SAFE AREA BASE LAYER (header color, not body black) ── */
-    .safe-area-fill {
+    /* ── NAVIGATION ────────────────────── */
+    .nav {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
-      height: var(--sat, 0px);
-      background: var(--page-top);
-      z-index: 999;
-      pointer-events: none;
-      transition: height 0.35s var(--ease-out);
-    }
-
-    /* ── NAVIGATION ────────────────────── */
-    .nav {
-      position: fixed;
-      top: var(--sat, 0px);
-      left: 0;
-      right: 0;
       z-index: 1000;
+      padding-top: env(safe-area-inset-top, 0px);
       padding-left: env(safe-area-inset-left, 0px);
       padding-right: env(safe-area-inset-right, 0px);
       background: transparent;
-      isolation: isolate;
       transition:
         background 0.35s var(--ease-out),
         box-shadow 0.35s var(--ease-out),
@@ -200,10 +154,10 @@
     }
     .nav-inner {
       position: relative;
-      z-index: 1;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      min-height: var(--nav-bar-h-lg);
       padding: 1.1rem 2rem;
       border-bottom: 1px solid transparent;
       transition: border-color 0.35s var(--ease-out);
@@ -261,8 +215,10 @@
       text-transform: uppercase;
       transition: color var(--dur-normal) var(--ease-out);
       position: relative;
-      padding: 0.25rem 0;
+      padding: 0.5rem 0;
       opacity: 0.85;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .nav-links a::after {
       content: '';
@@ -700,6 +656,7 @@
       color: var(--text-primary);
       margin-bottom: 3rem;
       position: relative;
+      text-wrap: balance;
     }
     .section-heading::after {
       content: '';
@@ -1039,6 +996,7 @@
       gap: 0.4rem;
       width: 100%;
       max-width: 11.5rem;
+      min-height: 2.75rem;
       padding: 0.5rem 1rem;
       border: 1px solid rgba(255,255,255,0.10);
       border-radius: var(--radius-full);
@@ -1048,10 +1006,17 @@
       font-size: 0.7rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      transition: all var(--dur-normal) var(--ease-out);
+      transition:
+        border-color var(--dur-normal) var(--ease-out),
+        color var(--dur-normal) var(--ease-out),
+        background var(--dur-normal) var(--ease-out),
+        box-shadow var(--dur-normal) var(--ease-out),
+        transform var(--dur-normal) var(--ease-out);
       background: rgba(25,25,36,0.5);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .platform-pill:hover {
       border-color: rgba(221,24,24,0.4);
@@ -1426,28 +1391,24 @@
     }
 
     @media (max-width: 900px) {
-      :root { --nav-height: calc(var(--nav-bar-h) + var(--sat, 0px)); }
-      html.is-header-merged {
-        background: var(--page-top);
-      }
+      :root { --nav-height: calc(var(--nav-bar-h) + env(safe-area-inset-top, 0px)); }
       .nav-inner {
-        padding: 0.75rem 1rem;
         min-height: var(--nav-bar-h);
+        padding: 0.85rem 1rem;
       }
       .nav:not(.scrolled) {
-        background: transparent;
+        background: linear-gradient(
+          180deg,
+          var(--page-top) 0,
+          var(--page-top) env(safe-area-inset-top, 0px),
+          transparent calc(env(safe-area-inset-top, 0px) + 1px)
+        );
       }
       .nav.scrolled {
         background: #1C1C26;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         box-shadow: 0 1px 0 rgba(221, 24, 24, 0.08);
-      }
-      .safe-area-fill.is-merged {
-        z-index: 1001;
-      }
-      .nav.scrolled {
-        z-index: 1002;
       }
       .nav.scrolled .nav-inner {
         border-bottom-color: rgba(255, 255, 255, 0.06);
@@ -1485,6 +1446,7 @@
       .nav-links { gap: 1rem; }
       .nav-links a { font-size: 0.65rem; letter-spacing: 0.1em; }
       section { padding: 4rem 1rem; }
+      .section-heading { margin-bottom: 2rem; }
       .music-card { min-width: 220px; max-width: 220px; }
       .carousel-track { gap: 1rem; }
       .hero-title { font-size: clamp(2rem, 12vw, 3rem); }
@@ -1494,8 +1456,6 @@
 <body>
 
   <a href="#main" class="skip-link">Skip to content</a>
-
-  <div class="safe-area-fill" id="safeAreaFill" aria-hidden="true"></div>
 
   <!-- Navigation -->
   <nav class="nav" id="nav" lang="en">
@@ -1817,7 +1777,6 @@
 
       /* ═══ NAV SCROLL ═══ */
       const nav = document.getElementById('nav');
-      const safeAreaFill = document.getElementById('safeAreaFill');
       const miniPlayerEl = document.getElementById('miniPlayer');
       const heroSection = document.getElementById('home');
       const heroScrollIndicator = document.getElementById('heroScrollIndicator');
@@ -1827,7 +1786,8 @@
       let scrollRaf = 0;
 
       function syncNavMetrics() {
-        if (window.__setSat) window.__setSat();
+        if (!nav) return;
+        document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
       }
       syncNavMetrics();
       window.addEventListener('resize', syncNavMetrics);
@@ -1858,10 +1818,6 @@
         var isScrolled = metrics.scrollY > scrollThreshold;
 
         nav.classList.toggle('scrolled', isScrolled);
-        document.documentElement.classList.toggle('is-header-merged', isScrolled && mobileNav);
-        if (safeAreaFill && mobileNav) {
-          safeAreaFill.classList.toggle('is-merged', isScrolled);
-        }
         nav.style.setProperty('--scroll-progress', metrics.pageProgress.toFixed(4));
         nav.style.setProperty('--scroll-progress-opacity', metrics.scrollY > 0 ? Math.min(1, metrics.navReveal * 1.2).toFixed(3) : '0');
 

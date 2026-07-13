@@ -3,6 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1C1C26">
+  <script>
+    (function () {
+      function readSafeAreaTop() {
+        var root = document.documentElement;
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding-top:constant(safe-area-inset-top);padding-top:env(safe-area-inset-top,0px)';
+        root.appendChild(probe);
+        var top = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+        probe.remove();
+        if (top < 1) {
+          var ua = navigator.userAgent || '';
+          var platform = navigator.platform || '';
+          if (/iPhone|iPod|iPad/.test(platform) || /iPhone|iPad/.test(ua)) {
+            var min = Math.min(screen.width, screen.height);
+            var max = Math.max(screen.width, screen.height);
+            if (min >= 390 && max >= 852) top = 59;
+            else if (min >= 375 && max >= 812) top = 47;
+            else if (min >= 320) top = 20;
+          }
+        }
+        root.style.setProperty('--sat', Math.round(top) + 'px');
+        return top;
+      }
+      readSafeAreaTop();
+      window.__readSafeAreaTop = readSafeAreaTop;
+      addEventListener('resize', readSafeAreaTop);
+      addEventListener('orientationchange', function () { setTimeout(readSafeAreaTop, 120); });
+    })();
+  </script>
   <meta name="description" content="Key Street — dark lyricism where minimalist indie meets cinematic ambience. Four singles from 2025.">
   <link rel="icon" href="favicon.png" type="image/png">
   <link rel="stylesheet" href="fonts/fonts.css">
@@ -72,7 +102,8 @@
       --dur-glacial: 800ms;
       --nav-bar-h: 3.25rem;
       --nav-bar-h-lg: 4.25rem;
-      --nav-height: calc(var(--nav-bar-h-lg) + env(safe-area-inset-top, 0px));
+      --sat: env(safe-area-inset-top, 0px);
+      --nav-height: calc(var(--nav-bar-h-lg) + var(--sat, 0px));
     }
 
     /* ── RESET ─────────────────────────── */
@@ -139,11 +170,8 @@
       left: 0;
       right: 0;
       z-index: 1000;
-      padding-top: constant(safe-area-inset-top);
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-left: constant(safe-area-inset-left);
+      padding-top: var(--sat, env(safe-area-inset-top, 0px));
       padding-left: env(safe-area-inset-left, 0px);
-      padding-right: constant(safe-area-inset-right);
       padding-right: env(safe-area-inset-right, 0px);
       background: transparent;
       transition:
@@ -1380,7 +1408,7 @@
     }
 
     @media (max-width: 900px) {
-      :root { --nav-height: calc(var(--nav-bar-h) + env(safe-area-inset-top, 0px)); }
+      :root { --nav-height: calc(var(--nav-bar-h) + var(--sat, 0px)); }
       .nav-inner {
         min-height: var(--nav-bar-h);
         padding: 0.85rem 1rem;
@@ -1390,8 +1418,8 @@
         background: linear-gradient(
           180deg,
           var(--page-top) 0,
-          var(--page-top) env(safe-area-inset-top, 0px),
-          transparent calc(env(safe-area-inset-top, 0px) + 1px)
+          var(--page-top) var(--sat, 0px),
+          transparent calc(var(--sat, 0px) + 1px)
         );
       }
       .nav.scrolled {
@@ -1775,7 +1803,9 @@
       let scrollRaf = 0;
 
       function syncNavMetrics() {
+        if (window.__readSafeAreaTop) window.__readSafeAreaTop();
         if (!nav) return;
+        void nav.offsetHeight;
         document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
       }
       syncNavMetrics();

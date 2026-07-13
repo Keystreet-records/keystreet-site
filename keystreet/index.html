@@ -4,6 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1C1C26">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script>
+    (function () {
+      function setSat() {
+        var root = document.documentElement;
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;padding-top:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+        root.appendChild(probe);
+        var top = parseFloat(getComputedStyle(probe).paddingTop) || 0;
+        probe.remove();
+        if (top < 1 && /iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent || '')) {
+          var min = Math.min(screen.width, screen.height);
+          var max = Math.max(screen.width, screen.height);
+          if (min >= 390 && max >= 852) top = 59;
+          else if (min >= 375 && max >= 812) top = 47;
+        }
+        root.style.setProperty('--sat', Math.round(top) + 'px');
+      }
+      setSat();
+      addEventListener('resize', setSat);
+      addEventListener('orientationchange', function () { setTimeout(setSat, 120); });
+    })();
+  </script>
   <meta name="description" content="Key Street — dark lyricism where minimalist indie meets cinematic ambience. Four singles from 2025.">
   <link rel="icon" href="favicon.png" type="image/png">
   <link rel="stylesheet" href="fonts/fonts.css">
@@ -73,7 +96,8 @@
       --dur-glacial: 800ms;
       --nav-bar-h: 3.25rem;
       --nav-bar-h-lg: 4.25rem;
-      --nav-height: calc(var(--nav-bar-h-lg) + env(safe-area-inset-top, 0px));
+      --sat: env(safe-area-inset-top, 0px);
+      --nav-height: calc(var(--nav-bar-h-lg) + var(--sat, 0px));
     }
 
     /* ── RESET ─────────────────────────── */
@@ -97,8 +121,8 @@
       background-image: linear-gradient(
         180deg,
         var(--page-top) 0,
-        var(--page-top) env(safe-area-inset-top, 0px),
-        var(--page-base) env(safe-area-inset-top, 0px)
+        var(--page-top) var(--sat, 0px),
+        var(--page-base) var(--sat, 0px)
       );
       color: var(--text-primary);
       line-height: 1.6;
@@ -146,7 +170,7 @@
       top: 0;
       left: 0;
       right: 0;
-      height: env(safe-area-inset-top, 0px);
+      height: var(--sat, 0px);
       background: var(--page-top);
       z-index: 999;
       pointer-events: none;
@@ -160,7 +184,7 @@
       left: 0;
       right: 0;
       z-index: 1000;
-      padding-top: env(safe-area-inset-top, 0px);
+      padding-top: var(--sat, 0px);
       padding-left: env(safe-area-inset-left, 0px);
       padding-right: env(safe-area-inset-right, 0px);
       background: transparent;
@@ -178,7 +202,7 @@
       top: 0;
       left: 0;
       right: 0;
-      height: env(safe-area-inset-top, 0px);
+      height: var(--sat, 0px);
       background: var(--page-top);
       pointer-events: none;
       z-index: 0;
@@ -1413,7 +1437,7 @@
     }
 
     @media (max-width: 900px) {
-      :root { --nav-height: calc(var(--nav-bar-h) + env(safe-area-inset-top, 0px)); }
+      :root { --nav-height: calc(var(--nav-bar-h) + var(--sat, 0px)); }
       .nav-inner {
         min-height: var(--nav-bar-h);
         padding: 0.85rem 1rem;
@@ -1423,8 +1447,8 @@
         background: linear-gradient(
           180deg,
           var(--page-top) 0,
-          var(--page-top) env(safe-area-inset-top, 0px),
-          transparent calc(env(safe-area-inset-top, 0px) + 1px)
+          var(--page-top) var(--sat, 0px),
+          transparent calc(var(--sat, 0px) + 1px)
         );
       }
       .nav.scrolled {
@@ -1819,6 +1843,7 @@
 
       function syncNavMetrics() {
         if (!nav) return;
+        void nav.offsetHeight;
         document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
       }
       syncNavMetrics();

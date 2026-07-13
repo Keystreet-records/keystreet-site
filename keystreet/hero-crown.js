@@ -1,30 +1,62 @@
-import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { createPlasticMaterial } from './materials.js';
+const THREE_CDN_CANDIDATES = [
+  'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js',
+  'https://unpkg.com/three@0.170.0/build/three.module.js',
+  'https://cdn.skypack.dev/three@0.170.0'
+];
 
-/** Flat circular wreath branch — 3 vines braided around a ring in the XZ plane */
-class WreathBranchCurve extends THREE.Curve {
-  constructor(branchIndex, branchCount = 3, radius = 1.05) {
-    super();
-    this.branchIndex = branchIndex;
-    this.branchCount = branchCount;
-    this.radius = radius;
-    this.phase = (branchIndex / branchCount) * Math.PI * 2;
+async function loadThree() {
+  let lastErr = null;
+  for (const url of THREE_CDN_CANDIDATES) {
+    try {
+      // @vite-ignore
+      const mod = await import(url);
+      if (mod && (mod.WebGLRenderer || mod.default?.WebGLRenderer)) return mod.default ?? mod;
+      return mod;
+    } catch (err) {
+      lastErr = err;
+    }
   }
+  throw lastErr ?? new Error('Failed to load Three.js');
+}
 
-  getPoint(t, optionalTarget = new THREE.Vector3()) {
-    const angle = t * Math.PI * 2;
-    const a = angle + this.phase * 0.12;
+function createPlasticMaterial(THREE, envMap) {
+  return new THREE.MeshPhysicalMaterial({
+    color: 0x000000,
+    metalness: 0,
+    roughness: 0.05,
+    clearcoat: 1,
+    clearcoatRoughness: 0.02,
+    envMap: envMap ?? null,
+    envMapIntensity: envMap ? 0.32 : 0,
+    reflectivity: 0.38
+  });
+}
 
-    const weave = Math.sin(angle * 3 + this.phase * 1.7) * 0.1;
-    const r = this.radius + weave + (this.branchIndex - 1) * 0.018;
+function createWreathBranchCurveClass(THREE) {
+  /** Flat circular wreath branch — 3 vines braided around a ring in the XZ plane */
+  return class WreathBranchCurve extends THREE.Curve {
+    constructor(branchIndex, branchCount = 3, radius = 1.05) {
+      super();
+      this.branchIndex = branchIndex;
+      this.branchCount = branchCount;
+      this.radius = radius;
+      this.phase = (branchIndex / branchCount) * Math.PI * 2;
+    }
 
-    const y =
-      Math.sin(angle * 4 + this.phase * 2.1) * 0.04 +
-      Math.cos(angle * 2 + this.phase) * 0.028;
+    getPoint(t, optionalTarget = new THREE.Vector3()) {
+      const angle = t * Math.PI * 2;
+      const a = angle + this.phase * 0.12;
 
-    return optionalTarget.set(Math.cos(a) * r, y, Math.sin(a) * r);
-  }
+      const weave = Math.sin(angle * 3 + this.phase * 1.7) * 0.1;
+      const r = this.radius + weave + (this.branchIndex - 1) * 0.018;
+
+      const y =
+        Math.sin(angle * 4 + this.phase * 2.1) * 0.04 +
+        Math.cos(angle * 2 + this.phase) * 0.028;
+
+      return optionalTarget.set(Math.cos(a) * r, y, Math.sin(a) * r);
+    }
+  };
 }
 
 function seededRandom(seed) {
@@ -47,7 +79,7 @@ function pickRandomTs(branchIndex, count, minGap) {
   return ts.sort((a, b) => a - b);
 }
 
-function placeThornsOnBranch(branchGroup, curve, branchIndex, material, options) {
+function placeThornsOnBranch(THREE, branchGroup, curve, branchIndex, material, options) {
   const { thornsPerBranch, lowDetail, tubeRadius } = options;
   const segs = lowDetail ? 6 : 8;
   const tangent = new THREE.Vector3();
@@ -76,7 +108,7 @@ function placeThornsOnBranch(branchGroup, curve, branchIndex, material, options)
       .normalize();
 
     const len = 0.22 + rng() * 0.28;
-    const thorn = createThorn(len, tubeRadius, material, segs);
+    const thorn = createThorn(THREE, len, tubeRadius, material, segs);
 
     attach.copy(pos).addScaledVector(growDir, tubeRadius * 0.98);
     thorn.position.copy(attach).addScaledVector(growDir, -tubeRadius * 0.2);
@@ -86,7 +118,7 @@ function placeThornsOnBranch(branchGroup, curve, branchIndex, material, options)
   }
 }
 
-function createThorn(length, tubeRadius, material, segs) {
+function createThorn(THREE, length, tubeRadius, material, segs) {
   const base = tubeRadius;
   const profile = [
     new THREE.Vector2(base, 0),
@@ -100,9 +132,10 @@ function createThorn(length, tubeRadius, material, segs) {
   return new THREE.Mesh(geo, material);
 }
 
-export function buildCrownOfThorns(envMap, lowDetail) {
+export function buildCrownOfThorns(THREE, envMap, lowDetail) {
   const crown = new THREE.Group();
-  const material = createPlasticMaterial(envMap);
+  const material = createPlasticMaterial(THREE, envMap);
+  const WreathBranchCurve = createWreathBranchCurveClass(THREE);
   const tubular = lowDetail ? 120 : 200;
   const radial = lowDetail ? 8 : 14;
   const tube = 0.052;
@@ -115,7 +148,7 @@ export function buildCrownOfThorns(envMap, lowDetail) {
       material
     );
     branchGroup.add(branch);
-    placeThornsOnBranch(branchGroup, curve, b, material, {
+    placeThornsOnBranch(THREE, branchGroup, curve, b, material, {
       thornsPerBranch: lowDetail ? 5 : 7,
       lowDetail,
       tubeRadius: tube
@@ -129,7 +162,9 @@ export function buildCrownOfThorns(envMap, lowDetail) {
   return crown;
 }
 
-export function initHeroCrown(canvas, container) {
+export async function initHeroCrown(canvas, container) {
+  const THREE = await loadThree();
+
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isCoarse = window.matchMedia('(pointer: coarse)').matches;
   const lowDetail = isCoarse || prefersReduced;
@@ -152,9 +187,10 @@ export function initHeroCrown(canvas, container) {
   camera.position.set(0, 4.05, 1.08);
   camera.lookAt(0, 0, 0);
 
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envMap = pmrem.fromScene(new RoomEnvironment(), 0.03).texture;
-  const crown = buildCrownOfThorns(envMap, lowDetail);
+  // Avoid extra addon dependency for maximum compatibility.
+  // If Three.js loads but environment helpers are blocked, we still render the crown.
+  const envMap = null;
+  const crown = buildCrownOfThorns(THREE, envMap, lowDetail);
   scene.add(crown);
 
   scene.add(new THREE.AmbientLight(0x4a0808, 0.32));

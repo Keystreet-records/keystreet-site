@@ -1490,7 +1490,7 @@
   <!-- Mini Player -->
   <!-- Hidden Yandex iframe for audio -->
   <iframe id="yandexAudio" title="Yandex Music Player" style="position:fixed;width:300px;height:152px;border:0;opacity:0;pointer-events:none;bottom:-200px;left:-200px" allow="autoplay *; encrypted-media *"></iframe>
-  <audio id="localAudio" preload="metadata" hidden></audio>
+  <audio id="localAudio" preload="none" hidden></audio>
 
   <div class="mini-player" id="miniPlayer">
     <div class="mini-player-shell">
@@ -2273,6 +2273,15 @@
         };
 
         var needsLoad = !localSrcMatches(src);
+        var started = false;
+        var loadTimeout = setTimeout(function() {
+          if (playbackBackend !== 'local' || started) return;
+          playbackState = 'paused';
+          miniTrack.textContent = (title || 'Track') + ' — loading… (check connection / try again)';
+          updateMiniUI();
+          freezeEq();
+          updateCardButtons();
+        }, 8000);
 
         function startPlayback() {
           if (playbackBackend !== 'local') return;
@@ -2286,6 +2295,8 @@
               updateCardButtons();
             });
           }
+          started = true;
+          clearTimeout(loadTimeout);
         }
 
         if (needsLoad) {
@@ -2437,18 +2448,14 @@
         currentAlbum = albumId;
         currentTrack = trackId;
 
-        var cachedAuth = getCachedYandexAuth();
-        if (cachedAuth === true) {
-          playYandex(trackId, albumId, title, duration);
-          return;
-        }
-        if (cachedAuth === false || !localSrc) {
-          if (localSrc) playLocal(localSrc, title, duration, true);
-          else playYandex(trackId, albumId, title, duration);
+        // Reliability first: always prefer local MP3s (CDN / embeds may be blocked).
+        if (localSrc) {
+          playLocal(localSrc, title, duration, true);
           return;
         }
 
-        probeYandexThenPlay(trackId, albumId, title, duration, localSrc);
+        // Fallback: if a card has no local source, use Yandex embed.
+        playYandex(trackId, albumId, title, duration);
       }
 
       function handleCardAction(card) {
@@ -2557,8 +2564,21 @@
       }
 
       try {
-        const { initHeroCrown } = await import('./hero-crown.js?v=32');
-        initHeroCrown(canvas, container);
+        // Show the fallback immediately; replace it once 3D is ready.
+        if (fallback) fallback.hidden = false;
+
+        const start = async () => {
+          const { initHeroCrown } = await import('./hero-crown.js?v=33');
+          await initHeroCrown(canvas, container);
+          if (fallback) fallback.hidden = true;
+        };
+
+        // Avoid blocking first paint / audio interactions.
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(() => start(), { timeout: 2500 });
+        } else {
+          setTimeout(() => start(), 300);
+        }
       } catch (err) {
         console.warn('Hero crown 3D failed', err);
         canvas.hidden = true;

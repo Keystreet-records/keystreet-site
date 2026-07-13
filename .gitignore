@@ -1,0 +1,21 @@
+.DS_Store
+.vercel
+.vercel-cli
+node_modules/
+*.log
+.env
+.env.*
+
+# Local deploy/MCP scratch files
+.deploy*
+.mcp*
+.call-mcp*
+.cover.b64
+.exact-*
+.emit_mcp*
+.invoke*
+.run_mcp*
+*.zip
+MEMORY.md
+DESIGN-HANDOFF.md
+DESIGN-MANIFEST.json

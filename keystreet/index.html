@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1C1C26" id="theme-color-meta">
   <meta name="theme-color" content="#1C1C26" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#1C1C26" media="(prefers-color-scheme: light)">
   <script>
@@ -217,7 +218,6 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      min-height: var(--nav-bar-h-lg);
       padding: 1.1rem 2rem;
       border-bottom: 1px solid transparent;
       transition: border-color 0.35s var(--ease-out);
@@ -1441,17 +1441,10 @@
 
     @media (max-width: 900px) {
       :root { --nav-height: calc(var(--nav-bar-h) + var(--sat, 0px)); }
-      .safe-area-fill {
-        height: max(var(--sat, 0px), 47px);
-      }
-      .nav {
-        padding-top: max(var(--sat, 0px), 47px);
-      }
-      .nav::before {
-        height: max(var(--sat, 0px), 47px);
+      html.is-header-merged {
+        background: var(--page-top);
       }
       .nav-inner {
-        min-height: var(--nav-bar-h);
         padding: 0.85rem 1rem;
       }
       /* At top: notch strip matches hero; nav bar stays clear */
@@ -1459,8 +1452,8 @@
         background: linear-gradient(
           180deg,
           var(--page-top) 0,
-          var(--page-top) max(var(--sat, 0px), 47px),
-          transparent calc(max(var(--sat, 0px), 47px) + 1px)
+          var(--page-top) var(--sat, 0px),
+          transparent calc(var(--sat, 0px) + 1px)
         );
       }
       .nav.scrolled {
@@ -1892,6 +1885,7 @@
         var isScrolled = metrics.scrollY > scrollThreshold;
 
         nav.classList.toggle('scrolled', isScrolled);
+        document.documentElement.classList.toggle('is-header-merged', isScrolled && mobileNav);
         if (safeAreaFill && mobileNav) {
           safeAreaFill.classList.toggle('is-merged', isScrolled);
           if (isScrolled) {

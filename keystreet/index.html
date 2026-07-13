@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#1C1C26">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1C1C26" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#1C1C26" media="(prefers-color-scheme: light)">
   <script>
     (function () {
       function setSat() {
@@ -19,10 +19,12 @@
           var max = Math.max(screen.width, screen.height);
           if (min >= 390 && max >= 852) top = 59;
           else if (min >= 375 && max >= 812) top = 47;
+          else if (min >= 320) top = 20;
         }
         root.style.setProperty('--sat', Math.round(top) + 'px');
       }
       setSat();
+      window.__setSat = setSat;
       addEventListener('resize', setSat);
       addEventListener('orientationchange', function () { setTimeout(setSat, 120); });
     })();
@@ -110,6 +112,7 @@
       overflow-x: clip;
       max-width: 100%;
       background: var(--page-top);
+      color-scheme: dark;
     }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: #0B0B14; }
@@ -1438,6 +1441,15 @@
 
     @media (max-width: 900px) {
       :root { --nav-height: calc(var(--nav-bar-h) + var(--sat, 0px)); }
+      .safe-area-fill {
+        height: max(var(--sat, 0px), 47px);
+      }
+      .nav {
+        padding-top: max(var(--sat, 0px), 47px);
+      }
+      .nav::before {
+        height: max(var(--sat, 0px), 47px);
+      }
       .nav-inner {
         min-height: var(--nav-bar-h);
         padding: 0.85rem 1rem;
@@ -1447,8 +1459,8 @@
         background: linear-gradient(
           180deg,
           var(--page-top) 0,
-          var(--page-top) var(--sat, 0px),
-          transparent calc(var(--sat, 0px) + 1px)
+          var(--page-top) max(var(--sat, 0px), 47px),
+          transparent calc(max(var(--sat, 0px), 47px) + 1px)
         );
       }
       .nav.scrolled {
@@ -1463,6 +1475,10 @@
       }
       .safe-area-fill.is-merged {
         height: var(--nav-height, 100%);
+        z-index: 1001;
+      }
+      .nav.scrolled {
+        z-index: 1002;
       }
       .nav.scrolled .nav-inner {
         border-bottom-color: rgba(255, 255, 255, 0.06);
@@ -1842,6 +1858,7 @@
       let scrollRaf = 0;
 
       function syncNavMetrics() {
+        if (window.__setSat) window.__setSat();
         if (!nav) return;
         void nav.offsetHeight;
         document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
@@ -1877,6 +1894,12 @@
         nav.classList.toggle('scrolled', isScrolled);
         if (safeAreaFill && mobileNav) {
           safeAreaFill.classList.toggle('is-merged', isScrolled);
+          if (isScrolled) {
+            syncNavMetrics();
+            safeAreaFill.style.height = nav.offsetHeight + 'px';
+          } else {
+            safeAreaFill.style.height = '';
+          }
         }
         nav.style.setProperty('--scroll-progress', metrics.pageProgress.toFixed(4));
         nav.style.setProperty('--scroll-progress-opacity', metrics.scrollY > 0 ? Math.min(1, metrics.navReveal * 1.2).toFixed(3) : '0');

@@ -1394,6 +1394,12 @@
     }
 
     @media (max-width: 900px) {
+      .nav {
+        padding-top: calc(1.1rem + var(--safe-top, 0px));
+        padding-right: calc(2rem + var(--safe-right, 0px));
+        padding-bottom: 1.1rem;
+        padding-left: calc(2rem + var(--safe-left, 0px));
+      }
       .nav.scrolled {
         background: #1C1C26;
         backdrop-filter: none;
@@ -1434,18 +1440,12 @@
     }
 
     @media (max-width: 600px) {
-      :root { --nav-height: calc(3.25rem + env(safe-area-inset-top, 0px)); }
+      :root { --nav-height: calc(3.25rem + var(--safe-top, 0px)); }
       .nav {
-        padding:
-          calc(0.85rem + constant(safe-area-inset-top))
-          calc(1rem + env(safe-area-inset-right, 0px))
-          0.85rem
-          calc(1rem + env(safe-area-inset-left, 0px));
-        padding:
-          calc(0.85rem + env(safe-area-inset-top, 0px))
-          calc(1rem + env(safe-area-inset-right, 0px))
-          0.85rem
-          calc(1rem + env(safe-area-inset-left, 0px));
+        padding-top: calc(0.85rem + var(--safe-top, 0px));
+        padding-right: calc(1rem + var(--safe-right, 0px));
+        padding-bottom: 0.85rem;
+        padding-left: calc(1rem + var(--safe-left, 0px));
       }
       .nav-links { gap: 1rem; }
       .nav-links a { font-size: 0.65rem; letter-spacing: 0.1em; }
@@ -1799,37 +1799,42 @@
           'left:0',
           'visibility:hidden',
           'pointer-events:none',
-          'height:constant(safe-area-inset-top)',
-          'height:env(safe-area-inset-top,0px)'
+          'padding-top:constant(safe-area-inset-top)',
+          'padding-top:env(safe-area-inset-top,0px)'
         ].join(';');
         document.documentElement.appendChild(probe);
-        var top = probe.offsetHeight;
+        var top = parseFloat(getComputedStyle(probe).paddingTop) || 0;
         probe.remove();
-        if (top < 1 && /iPhone|iPod/.test(navigator.userAgent) && Math.min(screen.width, screen.height) >= 812) {
-          top = 47;
+        if (top < 1 && /iPhone|iPod/.test(navigator.userAgent)) {
+          var minDim = Math.min(window.screen.width, window.screen.height);
+          var maxDim = Math.max(window.screen.width, window.screen.height);
+          if (minDim >= 390 && maxDim >= 852) top = 59;
+          else if (minDim >= 375 && maxDim >= 812) top = 47;
         }
-        cachedSafeTop = top;
-        return top;
+        cachedSafeTop = Math.round(top);
+        return cachedSafeTop;
       }
 
       function syncHeroSafePad() {
         var isMobile = window.matchMedia('(max-width: 900px)').matches;
-        document.documentElement.style.setProperty(
-          '--hero-safe-pad',
-          (isMobile && cachedSafeTop > 0) ? (cachedSafeTop + 'px') : '0px'
-        );
+        if (!isMobile || !nav) {
+          document.documentElement.style.setProperty('--hero-safe-pad', '0px');
+          return;
+        }
+        var spaceLg = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--space-lg')) || 32;
+        var pad = Math.max(cachedSafeTop, nav.offsetHeight - spaceLg);
+        document.documentElement.style.setProperty('--hero-safe-pad', pad + 'px');
       }
 
       function syncSafeArea() {
         var top = measureSafeTop();
-        if (top > 0) {
-          document.documentElement.style.setProperty('--safe-top', top + 'px');
-        }
+        document.documentElement.style.setProperty('--safe-top', top + 'px');
         if (navSafe && !navSafe.classList.contains('is-merged')) {
           navSafe.style.height = top > 0 ? (top + 'px') : '';
         }
-        syncHeroSafePad();
+        if (nav) void nav.offsetHeight;
         syncNavMetrics();
+        syncHeroSafePad();
       }
 
       function syncNavMetrics() {
@@ -1841,6 +1846,9 @@
       window.addEventListener('orientationchange', function() {
         setTimeout(syncSafeArea, 100);
       });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', function() { syncSafeArea(); });
+      }
 
       function getPlayerPad() {
         return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--player-pad')) || 0;

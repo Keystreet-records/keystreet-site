@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Key Street — dark lyricism where minimalist indie meets cinematic ambience. Four singles from 2025.">
   <link rel="icon" href="favicon.png" type="image/png">
   <link rel="stylesheet" href="fonts/fonts.css">
@@ -70,7 +70,10 @@
       --dur-normal: 300ms;
       --dur-slow: 500ms;
       --dur-glacial: 800ms;
-      --nav-height: 4.5rem;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --nav-height: calc(4.25rem + var(--safe-top));
     }
 
     /* ── RESET ─────────────────────────── */
@@ -97,11 +100,10 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       cursor: default;
-      padding-bottom: var(--player-pad, 0px);
+      padding-bottom: calc(var(--player-pad, 0px) + env(safe-area-inset-bottom, 0px));
     }
 
     main {
-      padding-top: var(--nav-height);
       max-width: 100%;
       overflow-x: clip;
     }
@@ -134,7 +136,11 @@
     /* ── NAVIGATION ────────────────────── */
     .nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-      padding: 1.25rem 2rem;
+      padding:
+        calc(1.1rem + var(--safe-top))
+        calc(2rem + var(--safe-right))
+        1.1rem
+        calc(2rem + var(--safe-left));
       display: flex; justify-content: space-between; align-items: center;
       background: transparent;
       backdrop-filter: none;
@@ -144,14 +150,16 @@
       transition:
         background 0.45s var(--ease-out),
         border-color 0.45s var(--ease-out),
-        box-shadow 0.45s var(--ease-out);
+        box-shadow 0.45s var(--ease-out),
+        backdrop-filter 0.45s var(--ease-out),
+        -webkit-backdrop-filter 0.45s var(--ease-out);
     }
     .nav.scrolled {
-      background: rgba(28, 28, 38, 0.9);
+      background: rgba(28, 28, 38, 0.94);
       backdrop-filter: blur(24px) saturate(180%);
       -webkit-backdrop-filter: blur(24px) saturate(180%);
       border-bottom-color: rgba(255, 255, 255, 0.06);
-      box-shadow: 0 1px 0 rgba(221, 24, 24, 0.12);
+      box-shadow: 0 1px 0 rgba(221, 24, 24, 0.08);
     }
     .nav-progress {
       position: absolute; bottom: 0; left: 0;
@@ -244,7 +252,10 @@
     /* ── HERO SECTION ──────────────────── */
     .hero {
       position: relative;
-      overflow: visible;
+      overflow-x: clip;
+      overflow-y: visible;
+      margin-top: calc(-1 * var(--nav-height));
+      padding-top: calc(var(--nav-height) + var(--space-lg));
       background: linear-gradient(
         180deg,
         var(--page-top) 0%,
@@ -1357,16 +1368,23 @@
     }
 
     @media (max-width: 900px) {
-      .hero { overflow: hidden; }
+      .hero { overflow-x: clip; }
       .hero-inner { grid-template-columns: 1fr; text-align: center; }
-      .hero-visual { order: -1; height: auto; overflow: hidden; max-width: 100%; }
+      .hero-visual { order: -1; height: auto; overflow: visible; max-width: 100%; }
       .hero-crown-stage {
         width: min(336px, 92vw);
         height: min(360px, 52vh);
-        overflow: hidden;
+        overflow: visible;
       }
-      .hero-crown-glow--halo { width: 120%; height: 120%; }
-      .hero-crown-glow--wide { width: 100%; height: 100%; }
+      .hero-crown-stage::before,
+      .hero-crown-glow,
+      .hero-crown-resonance-ring {
+        display: none;
+      }
+      .hero::before {
+        inset: 0;
+        opacity: 0.65;
+      }
       .hero-desc { max-width: 100%; }
       .hero-scroll-indicator { display: none; }
       .contact-inner { grid-template-columns: 1fr; gap: 2rem; }
@@ -1375,20 +1393,19 @@
       .music-card { min-width: 240px; max-width: 240px; }
       .music-card.in-view { transform: none; }
       .reveal { filter: blur(4px); }
-      .nav {
-        background: rgba(28, 28, 38, 0.94);
-        backdrop-filter: blur(24px) saturate(180%);
-        -webkit-backdrop-filter: blur(24px) saturate(180%);
-        border-bottom-color: rgba(255, 255, 255, 0.06);
-        box-shadow: 0 1px 0 rgba(221, 24, 24, 0.12);
-      }
       #music { overflow-x: clip; }
       .music-inner { overflow-x: clip; max-width: 100%; }
     }
 
     @media (max-width: 600px) {
-      :root { --nav-height: 3.5rem; }
-      .nav { padding: 1rem; }
+      :root { --nav-height: calc(3.25rem + var(--safe-top)); }
+      .nav {
+        padding:
+          calc(0.85rem + var(--safe-top))
+          calc(1rem + var(--safe-right))
+          0.85rem
+          calc(1rem + var(--safe-left));
+      }
       .nav-links { gap: 1rem; }
       .nav-links a { font-size: 0.65rem; letter-spacing: 0.1em; }
       section { padding: 4rem 1rem; }
@@ -1727,6 +1744,14 @@
         window.innerWidth > 600 &&
         !window.matchMedia('(pointer: coarse)').matches;
       let scrollRaf = 0;
+
+      function syncNavMetrics() {
+        if (!nav) return;
+        document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+      }
+      syncNavMetrics();
+      window.addEventListener('resize', syncNavMetrics);
+      window.addEventListener('orientationchange', syncNavMetrics);
 
       function getPlayerPad() {
         return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--player-pad')) || 0;

@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="preload" href="fonts/inter-400.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="fonts/unifraktur-maguntia.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="modulepreload" href="hero-crown.js?v=35">
+  <link rel="modulepreload" href="hero-crown.js?v=38">
   <title>Key Street — Electronic Music</title>
   <style>
     /* ═══════════════════════════════════════
@@ -705,12 +705,13 @@
         scroll-snap-type: x mandatory;
         overscroll-behavior-x: contain;
         scrollbar-width: none;
+        touch-action: pan-x pan-y;
       }
       .carousel-viewport::-webkit-scrollbar { display: none; }
       .carousel-track {
         transform: none !important;
         transition: none !important;
-        touch-action: pan-x;
+        touch-action: pan-x pan-y;
       }
       .music-card {
         scroll-snap-align: start;
@@ -1038,7 +1039,7 @@
 
     /* ── MINI PLAYER ──────────────────── */
     .mini-player {
-      position: fixed; left: 0; right: 0; bottom: -80px; z-index: 10001;
+      position: fixed; left: 0; right: 0; bottom: -140px; z-index: 10001;
       visibility: hidden;
       pointer-events: none;
       transition: bottom 0.4s var(--ease-out), visibility 0.4s var(--ease-out);
@@ -1054,8 +1055,9 @@
 
     .mini-player-shell {
       display: flex; align-items: center; gap: 16px;
-      height: 56px;
-      padding: 8px 20px;
+      min-height: 84px;
+      height: auto;
+      padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
       background: var(--glass-surface);
       backdrop-filter: var(--glass-blur);
       -webkit-backdrop-filter: var(--glass-blur);
@@ -1183,8 +1185,8 @@
 
     @media (max-width: 900px) {
       .mini-player-shell {
-        height: 56px;
-        padding: 0 12px;
+        min-height: 84px;
+        padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
         gap: 8px;
       }
       .mini-player-info {
@@ -1413,6 +1415,13 @@
         width: min(336px, 92vw);
         height: min(360px, 52vh);
         overflow: visible;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      }
+      .hero-crown-stage.is-tap-spin:focus-visible {
+        outline: 2px solid var(--red-glow);
+        outline-offset: 6px;
       }
       .hero-crown-stage::before,
       .hero-crown-glow,
@@ -1526,21 +1535,21 @@
             </div>
           </div>
 
-          <!-- Track 2: Невер мо -->
-          <div class="music-card" data-album="38565293" data-track="143779560" data-title="Невер мо (Never more)" data-duration="154" data-src="audio/never-mo.mp3">
+          <!-- Track 4: You come in my way -->
+          <div class="music-card" data-album="38511184" data-track="143650299" data-title="You come in my way" data-duration="237" data-src="audio/you-come-in-my-way.mp3">
             <div class="music-card-cover">
-              <img class="music-card-cover-img" src="https://avatars.yandex.net/get-music-content/15018579/bfe52d5c.a.38565293-1/600x600" alt="Невер мо (Never more)" loading="lazy">
+              <img class="music-card-cover-img" src="https://avatars.yandex.net/get-music-content/16154377/6ef376d7.a.38511184-1/600x600" alt="You come in my way" loading="lazy">
               <div class="card-ring"></div>
               <div class="card-ring"></div>
               <div class="card-ring"></div>
               <div class="card-play-overlay">
-                <button type="button" class="card-play-btn" aria-label="Play Невер мо (Never more)"></button>
+                <button type="button" class="card-play-btn" aria-label="Play You come in my way"></button>
               </div>
             </div>
             <div class="music-card-body">
-              <div class="music-card-title">Невер мо (Never more)</div>
+              <div class="music-card-title">You come in my way</div>
               <div class="music-card-meta">2025 · Single</div>
-              <div class="music-card-time">02:34</div>
+              <div class="music-card-time">03:57</div>
             </div>
           </div>
 
@@ -1562,21 +1571,21 @@
             </div>
           </div>
 
-          <!-- Track 4: You come in my way -->
-          <div class="music-card" data-album="38511184" data-track="143650299" data-title="You come in my way" data-duration="237" data-src="audio/you-come-in-my-way.mp3">
+          <!-- Track 2: Never more -->
+          <div class="music-card" data-album="38565293" data-track="143779560" data-title="Never more" data-duration="154" data-src="audio/never-mo.mp3">
             <div class="music-card-cover">
-              <img class="music-card-cover-img" src="https://avatars.yandex.net/get-music-content/16154377/6ef376d7.a.38511184-1/600x600" alt="You come in my way" loading="lazy">
+              <img class="music-card-cover-img" src="https://avatars.yandex.net/get-music-content/15018579/bfe52d5c.a.38565293-1/600x600" alt="Never more" loading="lazy">
               <div class="card-ring"></div>
               <div class="card-ring"></div>
               <div class="card-ring"></div>
               <div class="card-play-overlay">
-                <button type="button" class="card-play-btn" aria-label="Play You come in my way"></button>
+                <button type="button" class="card-play-btn" aria-label="Play Never more"></button>
               </div>
             </div>
             <div class="music-card-body">
-              <div class="music-card-title">You come in my way</div>
+              <div class="music-card-title">Never more</div>
               <div class="music-card-meta">2025 · Single</div>
-              <div class="music-card-time">03:57</div>
+              <div class="music-card-time">02:34</div>
             </div>
           </div>
         </div>
@@ -2784,7 +2793,7 @@
       }
 
       try {
-        const { initHeroCrown } = await import('./hero-crown.js?v=35');
+        const { initHeroCrown } = await import('./hero-crown.js?v=38');
         await initHeroCrown(canvas, container);
         container.classList.add('is-crown-ready');
       } catch (err) {

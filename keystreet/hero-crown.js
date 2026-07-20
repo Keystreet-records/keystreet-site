@@ -195,6 +195,8 @@ export async function initHeroCrown(canvas, container) {
 
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+  const isMobile = window.matchMedia('(max-width: 900px)').matches || isCoarse;
+  const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const lowDetail = isCoarse || prefersReduced;
   const canAnimate = !prefersReduced;
 
@@ -239,13 +241,41 @@ export async function initHeroCrown(canvas, container) {
   scene.add(rim);
 
   const baseRotX = -0.12;
-  const stage = container.closest('.hero-crown-stage');
+  const stage = container.closest('.hero-crown-stage') || container;
   let resonanceBoost = 0;
   let targetResonanceBoost = 0;
+  let mobileBoostUntil = 0;
+  let mobileAngle = 0;
+  let lastMobileTime = 0;
+  const idleSpinSpeed = 0.00012;
+  const boostSpinExtra = isMobile ? 0.00008 : 0.00007;
+  const mobileBoostMs = 2600;
 
-  if (stage) {
+  if (stage && canHover) {
     stage.addEventListener('mouseenter', () => { targetResonanceBoost = 1; });
     stage.addEventListener('mouseleave', () => { targetResonanceBoost = 0; });
+  }
+
+  if (stage && isMobile && canAnimate) {
+    stage.classList.add('is-tap-spin');
+    stage.setAttribute('role', 'button');
+    stage.setAttribute('tabindex', '0');
+    stage.setAttribute('aria-label', 'Speed up crown spin');
+
+    function boostMobileSpin() {
+      mobileBoostUntil = performance.now() + mobileBoostMs;
+      targetResonanceBoost = 1;
+    }
+
+    stage.addEventListener('click', (e) => {
+      e.preventDefault();
+      boostMobileSpin();
+    });
+    stage.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      boostMobileSpin();
+    });
   }
 
   let rafId = 0;
@@ -262,10 +292,21 @@ export async function initHeroCrown(canvas, container) {
 
   function render(time) {
     if (!visible) return;
+    if (isMobile && targetResonanceBoost > 0 && time >= mobileBoostUntil) {
+      targetResonanceBoost = 0;
+    }
     resonanceBoost += (targetResonanceBoost - resonanceBoost) * 0.06;
     crown.rotation.x = baseRotX;
     if (canAnimate) {
-      crown.rotation.y = time * (0.00012 + resonanceBoost * 0.00007);
+      if (isMobile) {
+        if (!lastMobileTime) lastMobileTime = time;
+        const dt = Math.min(64, time - lastMobileTime);
+        lastMobileTime = time;
+        mobileAngle += dt * (idleSpinSpeed + resonanceBoost * boostSpinExtra);
+        crown.rotation.y = mobileAngle;
+      } else {
+        crown.rotation.y = time * (idleSpinSpeed + resonanceBoost * boostSpinExtra);
+      }
     }
     under.intensity = 10 + resonanceBoost * 7;
     rim.intensity = 9 + resonanceBoost * 6;

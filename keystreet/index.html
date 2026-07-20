@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="preload" href="fonts/inter-400.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="fonts/unifraktur-maguntia.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="modulepreload" href="hero-crown.js?v=38">
+  <link rel="modulepreload" href="hero-crown.js?v=39">
   <title>Key Street — Electronic Music</title>
   <style>
     /* ═══════════════════════════════════════
@@ -1418,6 +1418,11 @@
         cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
+        transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+        will-change: transform;
+      }
+      .hero-crown-stage.is-tap-spin:active {
+        transform: scale(0.97);
       }
       .hero-crown-stage.is-tap-spin:focus-visible {
         outline: 2px solid var(--red-glow);
@@ -2793,7 +2798,7 @@
       }
 
       try {
-        const { initHeroCrown } = await import('./hero-crown.js?v=38');
+        const { initHeroCrown } = await import('./hero-crown.js?v=39');
         await initHeroCrown(canvas, container);
         container.classList.add('is-crown-ready');
       } catch (err) {

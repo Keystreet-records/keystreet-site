@@ -195,7 +195,6 @@ export async function initHeroCrown(canvas, container) {
 
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const isCoarse = window.matchMedia('(pointer: coarse)').matches;
-  const isMobile = window.matchMedia('(max-width: 900px)').matches || isCoarse;
   const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const lowDetail = isCoarse || prefersReduced;
   const canAnimate = !prefersReduced;
@@ -242,39 +241,77 @@ export async function initHeroCrown(canvas, container) {
 
   const baseRotX = -0.12;
   const stage = container.closest('.hero-crown-stage') || container;
+  const idleSpinSpeed = 0.00012;
+  const desktopBoostExtra = 0.00007;
+  // Light tap impulse: peaks ~2× idle, decays with ease-out (~1.6s)
+  const tapImpulse = 0.00013;
+  const tapImpulseCap = 0.00016;
+  const tapDecayMs = 1600;
+
   let resonanceBoost = 0;
   let targetResonanceBoost = 0;
-  let mobileBoostUntil = 0;
-  let mobileAngle = 0;
-  let lastMobileTime = 0;
-  const idleSpinSpeed = 0.00012;
-  const boostSpinExtra = isMobile ? 0.00008 : 0.00007;
-  const mobileBoostMs = 2600;
+  let spinImpulse = 0;
+  let spinAngle = 0;
+  let lastFrameTime = 0;
+  let tapPointerId = null;
+  let tapStartX = 0;
+  let tapStartY = 0;
+  let tapStartAt = 0;
+
+  function wantsTapBoost() {
+    return window.matchMedia('(max-width: 900px)').matches
+      || window.matchMedia('(pointer: coarse)').matches
+      || window.matchMedia('(hover: none)').matches;
+  }
 
   if (stage && canHover) {
     stage.addEventListener('mouseenter', () => { targetResonanceBoost = 1; });
     stage.addEventListener('mouseleave', () => { targetResonanceBoost = 0; });
   }
 
-  if (stage && isMobile && canAnimate) {
+  if (stage && canAnimate) {
     stage.classList.add('is-tap-spin');
     stage.setAttribute('role', 'button');
     stage.setAttribute('tabindex', '0');
     stage.setAttribute('aria-label', 'Speed up crown spin');
 
-    function boostMobileSpin() {
-      mobileBoostUntil = performance.now() + mobileBoostMs;
-      targetResonanceBoost = 1;
+    function pulseTapBoost() {
+      if (!wantsTapBoost()) return;
+      // Instant attack — ease-out starts fast so the tap feels heard
+      spinImpulse = Math.min(tapImpulseCap, spinImpulse + tapImpulse);
+      targetResonanceBoost = Math.min(1, 0.35 + spinImpulse / tapImpulseCap);
+      stage.classList.add('is-spin-boosted');
     }
 
-    stage.addEventListener('click', (e) => {
-      e.preventDefault();
-      boostMobileSpin();
+    stage.addEventListener('pointerdown', (e) => {
+      if (!wantsTapBoost()) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      tapPointerId = e.pointerId;
+      tapStartX = e.clientX;
+      tapStartY = e.clientY;
+      tapStartAt = performance.now();
     });
+
+    stage.addEventListener('pointerup', (e) => {
+      if (tapPointerId !== e.pointerId) return;
+      tapPointerId = null;
+      const elapsed = performance.now() - tapStartAt;
+      const dx = e.clientX - tapStartX;
+      const dy = e.clientY - tapStartY;
+      // True tap: short + little movement (scroll/drag ignored)
+      if (elapsed <= 450 && (dx * dx + dy * dy) <= 144) {
+        pulseTapBoost();
+      }
+    });
+
+    stage.addEventListener('pointercancel', () => {
+      tapPointerId = null;
+    });
+
     stage.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
-      boostMobileSpin();
+      pulseTapBoost();
     });
   }
 
@@ -292,25 +329,40 @@ export async function initHeroCrown(canvas, container) {
 
   function render(time) {
     if (!visible) return;
-    if (isMobile && targetResonanceBoost > 0 && time >= mobileBoostUntil) {
-      targetResonanceBoost = 0;
+
+    if (!lastFrameTime) lastFrameTime = time;
+    const dt = Math.min(48, Math.max(0, time - lastFrameTime));
+    lastFrameTime = time;
+
+    // Exponential ease-out decay — responsive start, soft landing
+    if (spinImpulse > 0.000001) {
+      const decay = Math.exp(-dt / (tapDecayMs * 0.38));
+      spinImpulse *= decay;
+      if (spinImpulse < 0.000002) spinImpulse = 0;
+    } else {
+      spinImpulse = 0;
     }
-    resonanceBoost += (targetResonanceBoost - resonanceBoost) * 0.06;
+
+    if (wantsTapBoost()) {
+      targetResonanceBoost = Math.min(1, spinImpulse / tapImpulseCap);
+      if (spinImpulse <= 0) stage?.classList.remove('is-spin-boosted');
+    }
+
+    resonanceBoost += (targetResonanceBoost - resonanceBoost) * (1 - Math.exp(-dt / 90));
     crown.rotation.x = baseRotX;
+
     if (canAnimate) {
-      if (isMobile) {
-        if (!lastMobileTime) lastMobileTime = time;
-        const dt = Math.min(64, time - lastMobileTime);
-        lastMobileTime = time;
-        mobileAngle += dt * (idleSpinSpeed + resonanceBoost * boostSpinExtra);
-        crown.rotation.y = mobileAngle;
+      if (wantsTapBoost()) {
+        spinAngle += dt * (idleSpinSpeed + spinImpulse);
+        crown.rotation.y = spinAngle;
       } else {
-        crown.rotation.y = time * (idleSpinSpeed + resonanceBoost * boostSpinExtra);
+        crown.rotation.y = time * (idleSpinSpeed + resonanceBoost * desktopBoostExtra);
       }
     }
-    under.intensity = 10 + resonanceBoost * 7;
-    rim.intensity = 9 + resonanceBoost * 6;
-    fill.intensity = 0.48 + resonanceBoost * 0.32;
+
+    under.intensity = 10 + resonanceBoost * 4;
+    rim.intensity = 9 + resonanceBoost * 3.5;
+    fill.intensity = 0.48 + resonanceBoost * 0.2;
     renderer.render(scene, camera);
   }
 
@@ -330,6 +382,7 @@ export async function initHeroCrown(canvas, container) {
 
   document.addEventListener('visibilitychange', () => {
     visible = !document.hidden;
+    if (visible) lastFrameTime = 0;
     if (visible && canAnimate && !rafId) rafId = requestAnimationFrame(loop);
     if (!visible && rafId) {
       cancelAnimationFrame(rafId);

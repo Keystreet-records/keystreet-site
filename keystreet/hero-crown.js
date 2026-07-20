@@ -243,40 +243,52 @@ export async function initHeroCrown(canvas, container) {
   const stage = container.closest('.hero-crown-stage') || container;
   const idleSpinSpeed = 0.00012;
   const hoverBoostExtra = 0.00007;
-  const scrollBoostExtra = 0.00018;
+  // rad per scrolled pixel — visible on iOS even when rAF is paused mid-scroll
+  const scrollSpinPerPx = 0.0055;
+  const scrollBoostExtra = 0.0002;
   const scrollBoostCap = 1;
-  const isMobileScrollBoost =
-    window.matchMedia('(max-width: 900px)').matches
-    || window.matchMedia('(pointer: coarse)').matches
-    || window.matchMedia('(hover: none)').matches;
 
   let resonanceBoost = 0;
   let targetResonanceBoost = 0;
   let scrollBoost = 0;
   let spinAngle = 0;
   let lastFrameTime = 0;
-  let lastScrollY = window.scrollY || 0;
-  let lastScrollTs = performance.now();
+  let lastScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
+  function useScrollSpin() {
+    return window.innerWidth <= 900
+      || window.matchMedia('(pointer: coarse)').matches
+      || window.matchMedia('(hover: none)').matches;
+  }
 
   if (stage && canHover) {
     stage.addEventListener('mouseenter', () => { targetResonanceBoost = 1; });
     stage.addEventListener('mouseleave', () => { targetResonanceBoost = 0; });
   }
 
-  if (canAnimate && isMobileScrollBoost) {
-    window.addEventListener('scroll', () => {
-      const now = performance.now();
-      const y = window.scrollY || document.documentElement.scrollTop || 0;
-      const dt = Math.max(8, now - lastScrollTs);
-      const dy = Math.abs(y - lastScrollY);
-      lastScrollY = y;
-      lastScrollTs = now;
+  function paintCrown() {
+    crown.rotation.x = baseRotX;
+    crown.rotation.y = spinAngle;
+    under.intensity = 10 + resonanceBoost * 4;
+    rim.intensity = 9 + resonanceBoost * 3.5;
+    fill.intensity = 0.48 + resonanceBoost * 0.2;
+    renderer.render(scene, camera);
+  }
 
-      // px/ms → 0..1 boost; light ceiling so it stays elegant
-      const velocity = dy / dt;
-      const hit = Math.min(1, velocity / 1.8);
-      scrollBoost = Math.min(scrollBoostCap, Math.max(scrollBoost, hit));
-      targetResonanceBoost = Math.min(1, scrollBoost * 0.55);
+  if (canAnimate) {
+    window.addEventListener('scroll', () => {
+      if (!useScrollSpin()) return;
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      const dy = y - lastScrollY;
+      lastScrollY = y;
+      if (!dy) return;
+
+      // Drive rotation directly from scroll delta (works while iOS pauses rAF)
+      spinAngle += Math.abs(dy) * scrollSpinPerPx;
+      scrollBoost = Math.min(scrollBoostCap, scrollBoost + Math.min(0.85, Math.abs(dy) / 70));
+      targetResonanceBoost = Math.min(1, scrollBoost * 0.5);
+      resonanceBoost += (targetResonanceBoost - resonanceBoost) * 0.35;
+      paintCrown();
     }, { passive: true });
   }
 
@@ -299,31 +311,25 @@ export async function initHeroCrown(canvas, container) {
     const dt = Math.min(48, Math.max(0, time - lastFrameTime));
     lastFrameTime = time;
 
-    // Soft ease-out after scroll stops
-    if (isMobileScrollBoost && scrollBoost > 0) {
-      scrollBoost *= Math.exp(-dt / 420);
-      if (scrollBoost < 0.01) {
+    if (useScrollSpin() && scrollBoost > 0) {
+      scrollBoost *= Math.exp(-dt / 380);
+      if (scrollBoost < 0.02) {
         scrollBoost = 0;
         targetResonanceBoost = 0;
       } else {
-        targetResonanceBoost = Math.min(1, scrollBoost * 0.55);
+        targetResonanceBoost = Math.min(1, scrollBoost * 0.5);
       }
     }
 
     resonanceBoost += (targetResonanceBoost - resonanceBoost) * (1 - Math.exp(-dt / 85));
-    crown.rotation.x = baseRotX;
 
     if (canAnimate) {
       const hoverExtra = canHover ? resonanceBoost * hoverBoostExtra : 0;
-      const scrollExtra = isMobileScrollBoost ? scrollBoost * scrollBoostExtra : 0;
+      const scrollExtra = useScrollSpin() ? scrollBoost * scrollBoostExtra : 0;
       spinAngle += dt * (idleSpinSpeed + hoverExtra + scrollExtra);
-      crown.rotation.y = spinAngle;
     }
 
-    under.intensity = 10 + resonanceBoost * 4;
-    rim.intensity = 9 + resonanceBoost * 3.5;
-    fill.intensity = 0.48 + resonanceBoost * 0.2;
-    renderer.render(scene, camera);
+    paintCrown();
   }
 
   function loop(time) {
@@ -335,7 +341,7 @@ export async function initHeroCrown(canvas, container) {
   if (canAnimate) {
     rafId = requestAnimationFrame(loop);
   } else {
-    render(0);
+    paintCrown();
   }
 
   new ResizeObserver(resize).observe(container);

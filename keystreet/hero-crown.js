@@ -243,67 +243,41 @@ export async function initHeroCrown(canvas, container) {
   const stage = container.closest('.hero-crown-stage') || container;
   const idleSpinSpeed = 0.00012;
   const hoverBoostExtra = 0.00007;
-  // Light but readable: ~2.4× idle at peak, soft ease-out landing
-  const tapImpulse = 0.00017;
-  const tapImpulseCap = 0.00022;
-  const tapDecayMs = 1400;
+  const scrollBoostExtra = 0.00018;
+  const scrollBoostCap = 1;
+  const isMobileScrollBoost =
+    window.matchMedia('(max-width: 900px)').matches
+    || window.matchMedia('(pointer: coarse)').matches
+    || window.matchMedia('(hover: none)').matches;
 
   let resonanceBoost = 0;
   let targetResonanceBoost = 0;
-  let spinImpulse = 0;
+  let scrollBoost = 0;
   let spinAngle = 0;
   let lastFrameTime = 0;
+  let lastScrollY = window.scrollY || 0;
+  let lastScrollTs = performance.now();
 
   if (stage && canHover) {
     stage.addEventListener('mouseenter', () => { targetResonanceBoost = 1; });
     stage.addEventListener('mouseleave', () => { targetResonanceBoost = 0; });
   }
 
-  if (stage && canAnimate) {
-    stage.classList.add('is-tap-spin');
-    stage.setAttribute('role', 'button');
-    stage.setAttribute('tabindex', '0');
-    stage.setAttribute('aria-label', 'Speed up crown spin');
-
-    let lastBoostAt = 0;
-
-    function pulseTapBoost() {
+  if (canAnimate && isMobileScrollBoost) {
+    window.addEventListener('scroll', () => {
       const now = performance.now();
-      // Debounce pointerdown + touchstart double-fire on iOS
-      if (now - lastBoostAt < 100) return;
-      lastBoostAt = now;
-      spinImpulse = Math.min(tapImpulseCap, spinImpulse + tapImpulse);
-      targetResonanceBoost = Math.min(1, 0.45 + spinImpulse / tapImpulseCap);
-      stage.classList.add('is-spin-boosted');
-    }
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      const dt = Math.max(8, now - lastScrollTs);
+      const dy = Math.abs(y - lastScrollY);
+      lastScrollY = y;
+      lastScrollTs = now;
 
-    function isTapPointer(e) {
-      // Desktop mouse keeps hover boost; touch/pen always get tap boost.
-      // Also allow mouse when device has no hover (some tablets).
-      if (e.pointerType === 'mouse' && canHover) return false;
-      return true;
-    }
-
-    // pointerdown = instant feedback (no movement-threshold that fails on iOS jitter)
-    stage.addEventListener('pointerdown', (e) => {
-      if (!isTapPointer(e)) return;
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
-      pulseTapBoost();
-    });
-
-    // iOS Safari fallback — some WebViews drop PointerEvents on non-<button>
-    stage.addEventListener('touchstart', (e) => {
-      if (canHover) return;
-      if (!e.changedTouches || !e.changedTouches.length) return;
-      pulseTapBoost();
+      // px/ms → 0..1 boost; light ceiling so it stays elegant
+      const velocity = dy / dt;
+      const hit = Math.min(1, velocity / 1.8);
+      scrollBoost = Math.min(scrollBoostCap, Math.max(scrollBoost, hit));
+      targetResonanceBoost = Math.min(1, scrollBoost * 0.55);
     }, { passive: true });
-
-    stage.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-      pulseTapBoost();
-    });
   }
 
   let rafId = 0;
@@ -325,15 +299,14 @@ export async function initHeroCrown(canvas, container) {
     const dt = Math.min(48, Math.max(0, time - lastFrameTime));
     lastFrameTime = time;
 
-    // Exponential ease-out decay
-    if (spinImpulse > 0) {
-      spinImpulse *= Math.exp(-dt / (tapDecayMs * 0.42));
-      if (spinImpulse < 0.0000015) {
-        spinImpulse = 0;
-        stage?.classList.remove('is-spin-boosted');
-        if (!canHover) targetResonanceBoost = 0;
-      } else if (!canHover) {
-        targetResonanceBoost = Math.min(1, spinImpulse / tapImpulseCap);
+    // Soft ease-out after scroll stops
+    if (isMobileScrollBoost && scrollBoost > 0) {
+      scrollBoost *= Math.exp(-dt / 420);
+      if (scrollBoost < 0.01) {
+        scrollBoost = 0;
+        targetResonanceBoost = 0;
+      } else {
+        targetResonanceBoost = Math.min(1, scrollBoost * 0.55);
       }
     }
 
@@ -341,9 +314,9 @@ export async function initHeroCrown(canvas, container) {
     crown.rotation.x = baseRotX;
 
     if (canAnimate) {
-      // Single delta path: idle + tap impulse + desktop hover
       const hoverExtra = canHover ? resonanceBoost * hoverBoostExtra : 0;
-      spinAngle += dt * (idleSpinSpeed + spinImpulse + hoverExtra);
+      const scrollExtra = isMobileScrollBoost ? scrollBoost * scrollBoostExtra : 0;
+      spinAngle += dt * (idleSpinSpeed + hoverExtra + scrollExtra);
       crown.rotation.y = spinAngle;
     }
 

@@ -242,27 +242,17 @@ export async function initHeroCrown(canvas, container) {
   const baseRotX = -0.12;
   const stage = container.closest('.hero-crown-stage') || container;
   const idleSpinSpeed = 0.00012;
-  const desktopBoostExtra = 0.00007;
-  // Light tap impulse: peaks ~2× idle, decays with ease-out (~1.6s)
-  const tapImpulse = 0.00013;
-  const tapImpulseCap = 0.00016;
-  const tapDecayMs = 1600;
+  const hoverBoostExtra = 0.00007;
+  // Light but readable: ~2.4× idle at peak, soft ease-out landing
+  const tapImpulse = 0.00017;
+  const tapImpulseCap = 0.00022;
+  const tapDecayMs = 1400;
 
   let resonanceBoost = 0;
   let targetResonanceBoost = 0;
   let spinImpulse = 0;
   let spinAngle = 0;
   let lastFrameTime = 0;
-  let tapPointerId = null;
-  let tapStartX = 0;
-  let tapStartY = 0;
-  let tapStartAt = 0;
-
-  function wantsTapBoost() {
-    return window.matchMedia('(max-width: 900px)').matches
-      || window.matchMedia('(pointer: coarse)').matches
-      || window.matchMedia('(hover: none)').matches;
-  }
 
   if (stage && canHover) {
     stage.addEventListener('mouseenter', () => { targetResonanceBoost = 1; });
@@ -275,38 +265,39 @@ export async function initHeroCrown(canvas, container) {
     stage.setAttribute('tabindex', '0');
     stage.setAttribute('aria-label', 'Speed up crown spin');
 
+    let lastBoostAt = 0;
+
     function pulseTapBoost() {
-      if (!wantsTapBoost()) return;
-      // Instant attack — ease-out starts fast so the tap feels heard
+      const now = performance.now();
+      // Debounce pointerdown + touchstart double-fire on iOS
+      if (now - lastBoostAt < 100) return;
+      lastBoostAt = now;
       spinImpulse = Math.min(tapImpulseCap, spinImpulse + tapImpulse);
-      targetResonanceBoost = Math.min(1, 0.35 + spinImpulse / tapImpulseCap);
+      targetResonanceBoost = Math.min(1, 0.45 + spinImpulse / tapImpulseCap);
       stage.classList.add('is-spin-boosted');
     }
 
+    function isTapPointer(e) {
+      // Desktop mouse keeps hover boost; touch/pen always get tap boost.
+      // Also allow mouse when device has no hover (some tablets).
+      if (e.pointerType === 'mouse' && canHover) return false;
+      return true;
+    }
+
+    // pointerdown = instant feedback (no movement-threshold that fails on iOS jitter)
     stage.addEventListener('pointerdown', (e) => {
-      if (!wantsTapBoost()) return;
+      if (!isTapPointer(e)) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      tapPointerId = e.pointerId;
-      tapStartX = e.clientX;
-      tapStartY = e.clientY;
-      tapStartAt = performance.now();
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+      pulseTapBoost();
     });
 
-    stage.addEventListener('pointerup', (e) => {
-      if (tapPointerId !== e.pointerId) return;
-      tapPointerId = null;
-      const elapsed = performance.now() - tapStartAt;
-      const dx = e.clientX - tapStartX;
-      const dy = e.clientY - tapStartY;
-      // True tap: short + little movement (scroll/drag ignored)
-      if (elapsed <= 450 && (dx * dx + dy * dy) <= 144) {
-        pulseTapBoost();
-      }
-    });
-
-    stage.addEventListener('pointercancel', () => {
-      tapPointerId = null;
-    });
+    // iOS Safari fallback — some WebViews drop PointerEvents on non-<button>
+    stage.addEventListener('touchstart', (e) => {
+      if (canHover) return;
+      if (!e.changedTouches || !e.changedTouches.length) return;
+      pulseTapBoost();
+    }, { passive: true });
 
     stage.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -334,30 +325,26 @@ export async function initHeroCrown(canvas, container) {
     const dt = Math.min(48, Math.max(0, time - lastFrameTime));
     lastFrameTime = time;
 
-    // Exponential ease-out decay — responsive start, soft landing
-    if (spinImpulse > 0.000001) {
-      const decay = Math.exp(-dt / (tapDecayMs * 0.38));
-      spinImpulse *= decay;
-      if (spinImpulse < 0.000002) spinImpulse = 0;
-    } else {
-      spinImpulse = 0;
+    // Exponential ease-out decay
+    if (spinImpulse > 0) {
+      spinImpulse *= Math.exp(-dt / (tapDecayMs * 0.42));
+      if (spinImpulse < 0.0000015) {
+        spinImpulse = 0;
+        stage?.classList.remove('is-spin-boosted');
+        if (!canHover) targetResonanceBoost = 0;
+      } else if (!canHover) {
+        targetResonanceBoost = Math.min(1, spinImpulse / tapImpulseCap);
+      }
     }
 
-    if (wantsTapBoost()) {
-      targetResonanceBoost = Math.min(1, spinImpulse / tapImpulseCap);
-      if (spinImpulse <= 0) stage?.classList.remove('is-spin-boosted');
-    }
-
-    resonanceBoost += (targetResonanceBoost - resonanceBoost) * (1 - Math.exp(-dt / 90));
+    resonanceBoost += (targetResonanceBoost - resonanceBoost) * (1 - Math.exp(-dt / 85));
     crown.rotation.x = baseRotX;
 
     if (canAnimate) {
-      if (wantsTapBoost()) {
-        spinAngle += dt * (idleSpinSpeed + spinImpulse);
-        crown.rotation.y = spinAngle;
-      } else {
-        crown.rotation.y = time * (idleSpinSpeed + resonanceBoost * desktopBoostExtra);
-      }
+      // Single delta path: idle + tap impulse + desktop hover
+      const hoverExtra = canHover ? resonanceBoost * hoverBoostExtra : 0;
+      spinAngle += dt * (idleSpinSpeed + spinImpulse + hoverExtra);
+      crown.rotation.y = spinAngle;
     }
 
     under.intensity = 10 + resonanceBoost * 4;

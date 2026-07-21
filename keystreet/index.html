@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="preload" href="fonts/inter-400.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preload" href="fonts/unifraktur-maguntia.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="modulepreload" href="hero-crown.js?v=43">
+  <link rel="modulepreload" href="hero-crown.js?v=44">
   <title>Key Street — Electronic Music</title>
   <style>
     /* ═══════════════════════════════════════
@@ -2789,7 +2789,7 @@
       }
 
       try {
-        const { initHeroCrown } = await import('./hero-crown.js?v=43');
+        const { initHeroCrown } = await import('./hero-crown.js?v=44');
         await initHeroCrown(canvas, container);
         container.classList.add('is-crown-ready');
       } catch (err) {

@@ -241,6 +241,7 @@ export async function initHeroCrown(canvas, container) {
 
   const baseRotX = -0.12;
   const stage = container.closest('.hero-crown-stage') || container;
+  const hero = container.closest('.hero') || document.getElementById('home');
   const idleSpinSpeed = 0.00012;
   const hoverBoostExtra = 0.00007;
   // rad per scrolled pixel — visible on iOS even when rAF is paused mid-scroll
@@ -261,17 +262,30 @@ export async function initHeroCrown(canvas, container) {
       || window.matchMedia('(hover: none)').matches;
   }
 
+  function setResonanceActive(on) {
+    if (!stage) return;
+    stage.classList.toggle('is-resonance-active', on);
+    if (hero) hero.classList.toggle('is-resonance-active', on);
+  }
+
   if (stage && canHover) {
-    stage.addEventListener('mouseenter', () => { targetResonanceBoost = 1; });
-    stage.addEventListener('mouseleave', () => { targetResonanceBoost = 0; });
+    stage.style.cursor = 'pointer';
+    stage.addEventListener('mouseenter', () => {
+      targetResonanceBoost = 1;
+      setResonanceActive(true);
+    });
+    stage.addEventListener('mouseleave', () => {
+      targetResonanceBoost = 0;
+      setResonanceActive(false);
+    });
   }
 
   function paintCrown() {
     crown.rotation.x = baseRotX;
     crown.rotation.y = spinAngle;
-    under.intensity = 10 + resonanceBoost * 4;
-    rim.intensity = 9 + resonanceBoost * 3.5;
-    fill.intensity = 0.48 + resonanceBoost * 0.2;
+    under.intensity = 10 + resonanceBoost * 7;
+    rim.intensity = 9 + resonanceBoost * 6;
+    fill.intensity = 0.48 + resonanceBoost * 0.32;
     renderer.render(scene, camera);
   }
 
@@ -311,7 +325,9 @@ export async function initHeroCrown(canvas, container) {
     const dt = Math.min(48, Math.max(0, time - lastFrameTime));
     lastFrameTime = time;
 
-    if (useScrollSpin() && scrollBoost > 0) {
+    const mobileScroll = useScrollSpin();
+
+    if (mobileScroll && scrollBoost > 0) {
       scrollBoost *= Math.exp(-dt / 380);
       if (scrollBoost < 0.02) {
         scrollBoost = 0;
@@ -322,11 +338,19 @@ export async function initHeroCrown(canvas, container) {
     }
 
     resonanceBoost += (targetResonanceBoost - resonanceBoost) * (1 - Math.exp(-dt / 85));
+    if (stage && canHover) {
+      stage.style.setProperty('--glow-power', resonanceBoost.toFixed(3));
+      if (hero) hero.style.setProperty('--glow-power', resonanceBoost.toFixed(3));
+    }
 
     if (canAnimate) {
-      const hoverExtra = canHover ? resonanceBoost * hoverBoostExtra : 0;
-      const scrollExtra = useScrollSpin() ? scrollBoost * scrollBoostExtra : 0;
-      spinAngle += dt * (idleSpinSpeed + hoverExtra + scrollExtra);
+      if (mobileScroll) {
+        const scrollExtra = scrollBoost * scrollBoostExtra;
+        spinAngle += dt * (idleSpinSpeed + scrollExtra);
+      } else {
+        // Original desktop formula — idle + hover acceleration
+        spinAngle = time * (idleSpinSpeed + resonanceBoost * hoverBoostExtra);
+      }
     }
 
     paintCrown();

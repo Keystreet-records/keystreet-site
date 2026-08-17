@@ -1395,18 +1395,37 @@
     }
 
     @media (max-width: 900px) {
-      :root { --nav-height: calc(var(--nav-bar-h) + env(safe-area-inset-top, 0px)); }
+      :root { --nav-height: calc(var(--nav-bar-h) + env(safe-area-inset-top, 0px) + 8px); }
+      .nav {
+        top: calc(env(safe-area-inset-top, 0px) + 8px);
+        left: max(16px, env(safe-area-inset-left, 0px));
+        right: max(16px, env(safe-area-inset-right, 0px));
+        padding-top: 0;
+        padding-left: 0;
+        padding-right: 0;
+        border-radius: var(--radius-md);
+        background: var(--glass-surface);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-edge);
+        transform: translateZ(0);
+      }
+      .nav:not(.scrolled),
+      .nav.scrolled {
+        background: var(--glass-surface);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+      }
       .nav-inner {
         min-height: var(--nav-bar-h);
         padding: 0.85rem 1rem;
+        border-bottom: none;
       }
-      .nav:not(.scrolled) {
-        background: linear-gradient(
-          180deg,
-          var(--page-top) 0,
-          var(--page-top) env(safe-area-inset-top, 0px),
-          transparent calc(env(safe-area-inset-top, 0px) + 1px)
-        );
+      .nav.scrolled .nav-inner {
+        border-bottom: none;
+      }
+      .nav-progress {
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
       }
       .hero { overflow-x: clip; }
       .hero-inner { grid-template-columns: 1fr; text-align: center; }
@@ -1785,7 +1804,9 @@
 
       function syncNavMetrics() {
         if (!nav) return;
-        document.documentElement.style.setProperty('--nav-height', nav.offsetHeight + 'px');
+        var clearance = Math.round(nav.getBoundingClientRect().bottom);
+        if (clearance < 1) clearance = nav.offsetHeight;
+        document.documentElement.style.setProperty('--nav-height', clearance + 'px');
       }
       syncNavMetrics();
       window.addEventListener('resize', syncNavMetrics);

@@ -1193,9 +1193,9 @@
         bottom: calc(16px + env(safe-area-inset-bottom, 0px));
       }
       .mini-player-shell {
-        min-height: var(--nav-bar-h);
-        padding: 0.85rem 1rem;
-        gap: 8px;
+        min-height: 3.75rem;
+        padding: 0.7rem 0.9rem;
+        gap: 10px;
         border-radius: var(--radius-md);
         border: 1px solid var(--glass-edge);
         transform: translateZ(0);
@@ -1203,17 +1203,24 @@
       .mini-player-info {
         flex: 1;
         min-width: 0;
-        flex-direction: row;
-        align-items: baseline;
-        gap: 6px;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0.2rem;
       }
       .mini-player-track {
-        max-width: none;
-        font-size: 0.7rem;
+        max-width: 100%;
+        font-size: 0.72rem;
+        line-height: 1.25;
       }
       .mini-player-artist {
-        display: inline;
-        font-size: 0.6rem;
+        display: block;
+        font-size: 0.58rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
       .mini-player-progress { display: none; }
       .mini-player-time { font-size: 0.6rem; min-width: 30px; }

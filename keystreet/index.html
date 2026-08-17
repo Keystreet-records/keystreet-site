@@ -1184,10 +1184,21 @@
     }
 
     @media (max-width: 900px) {
+      .mini-player {
+        left: max(16px, env(safe-area-inset-left, 0px));
+        right: max(16px, env(safe-area-inset-right, 0px));
+        bottom: -160px;
+      }
+      .mini-player.active {
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      }
       .mini-player-shell {
-        min-height: 84px;
-        padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+        min-height: var(--nav-bar-h);
+        padding: 0.85rem 1rem;
         gap: 8px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--glass-edge);
+        transform: translateZ(0);
       }
       .mini-player-info {
         flex: 1;
@@ -2290,7 +2301,10 @@
       function syncMiniPlayerPadding() {
         var pad = '0px';
         if (miniPlayer.classList.contains('active')) {
-          pad = miniPlayer.querySelector('.mini-player-shell').offsetHeight + 'px';
+          var shell = miniPlayer.querySelector('.mini-player-shell');
+          var extra = parseFloat(getComputedStyle(miniPlayer).bottom) || 0;
+          if (extra < 0) extra = 0;
+          pad = Math.round(shell.offsetHeight + extra) + 'px';
         }
         document.documentElement.style.setProperty('--player-pad', pad);
         scheduleScrollFx();
